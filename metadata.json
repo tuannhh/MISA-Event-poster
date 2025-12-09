@@ -1,0 +1,5 @@
+{
+  "name": "MISA Event Poster AI",
+  "description": "Professional event invitation generator powered by Gemini 3 Pro (Nano Banana Pro) for MISA events.",
+  "requestFramePermissions": []
+}
