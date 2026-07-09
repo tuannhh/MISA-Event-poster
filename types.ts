@@ -1,6 +1,7 @@
 
-export type AspectRatio = '16:9' | '3:4';
+export type AspectRatio = '16:9' | '3:4' | '4:3';
 export type AppMode = 'manual' | 'auto' | 'library' | 'history';
+export type EventFormat = 'online' | 'offline' | 'hybrid';
 
 export interface LibraryItem {
   id: string;
@@ -45,11 +46,17 @@ export interface EventFormData {
   // Event Info
   eventType: string; // New: Seminar, Workshop, etc.
   eventName: string;
+  isEventNameUppercase: boolean; // New: Toggle uppercase for event name
   time: string;
   date: string;
   targetAudience: string;
-  isOnline: boolean;
-  locationOrPlatform: string; // Zoom link or Physical Address
+  
+  // Location / Format Logic
+  eventFormat: EventFormat;
+  onlinePlatform: string; // e.g., Zoom, Teams. Default: Zoom Online
+  offlineAddress: string; // Physical address
+  
+  dressCode: string; // New: Dresscode info
   
   // Agenda
   agenda: AgendaItem[];
@@ -82,6 +89,7 @@ export interface EventFormData {
   includeQrCode: boolean;
   qrCodeImage: File | null;
   qrCodePreview: string | null;
+  qrCta: string; // New: CTA text for QR
 
   // Speakers
   speakers: Speaker[];
@@ -92,11 +100,17 @@ export const INITIAL_FORM_DATA: EventFormData = {
   uploadedFile: null,
   eventType: '',
   eventName: '',
+  isEventNameUppercase: true, // Default to true for better design, user can uncheck
   date: '',
   time: '',
   targetAudience: '',
-  isOnline: true,
-  locationOrPlatform: 'Zoom Online',
+  
+  // New Format Logic
+  eventFormat: 'online',
+  onlinePlatform: 'Zoom Meeting',
+  offlineAddress: '',
+
+  dressCode: '',
   agenda: [],
   themeTone: 'Xanh công nghệ (MISA Blue)',
   themeTopics: ['Công nghệ'],
@@ -114,5 +128,6 @@ export const INITIAL_FORM_DATA: EventFormData = {
   includeQrCode: false,
   qrCodeImage: null,
   qrCodePreview: null,
+  qrCta: 'Đăng ký ngay',
   speakers: []
 };

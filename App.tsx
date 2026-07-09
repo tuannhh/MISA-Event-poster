@@ -1,17 +1,20 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { INITIAL_FORM_DATA, EventFormData, AppMode, AspectRatio, Speaker, HistoryItem } from './types';
+import { INITIAL_FORM_DATA, EventFormData, AppMode, AspectRatio, Speaker, HistoryItem, EventFormat } from './types';
 import { generatePoster, extractEventInfo } from './services/geminiService';
 import Header from './components/Header';
 import SpeakerSection from './components/SpeakerSection';
 import LogoSection from './components/LogoSection';
 import AgendaSection from './components/AgendaSection';
 import TemplateLibrary from './components/TemplateLibrary';
+import InstallPWA from './components/InstallPWA';
 import { 
   Layout, Palette, CheckCircle2, Download, ZoomIn, Loader2, 
   FileText, UploadCloud, RefreshCw, Sparkles, ImagePlus, 
   QrCode, Trash2, CalendarClock, MapPin, Target, Upload, 
-  Maximize2, X, ChevronRight, Wand2, History, ImageIcon, Play
+  Maximize2, X, ChevronRight, Wand2, History, ImageIcon, Play,
+  MoreVertical, Calendar, Shirt, Users, RectangleHorizontal, RectangleVertical, Type,
+  Wifi, Building, Split, Brush
 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -23,6 +26,7 @@ const App: React.FC = () => {
   const [isExtracting, setIsExtracting] = useState(false);
   const [isExtracted, setIsExtracted] = useState(false); // Track if extraction happened in Auto mode
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   // Ref for auto-scrolling to result
   const resultRef = useRef<HTMLDivElement>(null);
@@ -92,13 +96,14 @@ const App: React.FC = () => {
     if (!formData.uploadedFile) return;
 
     setIsExtracting(true);
+    setErrorMsg(null);
     try {
       const extractedData = await extractEventInfo(formData.uploadedFile);
       updateFormData(extractedData);
       setIsExtracted(true); // Reveal fields
     } catch (error) {
       console.error(error);
-      alert('Không thể trích xuất thông tin. Vui lòng thử lại hoặc nhập thủ công.');
+      setErrorMsg('Không thể trích xuất thông tin. Vui lòng thử lại hoặc nhập thủ công.');
     } finally {
       setIsExtracting(false);
     }
@@ -112,6 +117,7 @@ const App: React.FC = () => {
 
   const handleGenerate = async () => {
     setIsGenerating(true);
+    setErrorMsg(null);
     try {
       const result = await generatePoster(formData);
       setGeneratedImage(result);
@@ -129,7 +135,8 @@ const App: React.FC = () => {
           setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
       }
     } catch (error) {
-      alert((error as Error).message);
+      console.error(error);
+      setErrorMsg((error as Error).message || "Đã xảy ra lỗi khi tạo ảnh.");
     } finally {
       setIsGenerating(false);
     }
@@ -138,6 +145,13 @@ const App: React.FC = () => {
   const openHistoryItem = (img: string) => {
       setGeneratedImage(img);
       setPreviewOpen(true);
+  };
+
+  const deleteHistoryItem = (id: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (window.confirm('Bạn có chắc chắn muốn xóa thiết kế này không?')) {
+          setHistory(prev => prev.filter(item => item.id !== id));
+      }
   };
 
   // --- RENDER HELPERS ---
@@ -154,27 +168,68 @@ const App: React.FC = () => {
     value: string, 
     field: keyof EventFormData, 
     placeholder: string,
-    isTextArea = false
+    isTextArea = false,
+    icon?: React.ReactNode // Added optional icon prop
   ) => (
     <div className="mb-5">
       <label className="block text-sm font-semibold text-gray-700 mb-2">{label}</label>
-      {isTextArea ? (
-        <textarea
-            value={value}
-            onChange={(e) => updateFormData({ [field]: e.target.value })}
-            className="w-full px-5 py-4 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-misa-blue/50 focus:border-misa-blue transition-all text-lg min-h-[100px] shadow-sm"
-            placeholder={placeholder}
-        />
-      ) : (
-        <input
-            type="text"
-            value={value}
-            onChange={(e) => updateFormData({ [field]: e.target.value })}
-            className="w-full px-5 py-4 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-misa-blue/50 focus:border-misa-blue transition-all text-lg shadow-sm"
-            placeholder={placeholder}
-        />
-      )}
+      <div className="relative">
+          {icon && !isTextArea && (
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                  {icon}
+              </div>
+          )}
+          {isTextArea ? (
+            <textarea
+                value={value}
+                onChange={(e) => updateFormData({ [field]: e.target.value })}
+                className="w-full px-5 py-4 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-misa-blue/50 focus:border-misa-blue transition-all text-base min-h-[100px] shadow-sm resize-y"
+                placeholder={placeholder}
+            />
+          ) : (
+            <input
+                type="text"
+                value={value}
+                onChange={(e) => updateFormData({ [field]: e.target.value })}
+                className={`w-full ${icon ? 'pl-10 pr-5' : 'px-5'} py-4 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-misa-blue/50 focus:border-misa-blue transition-all text-lg shadow-sm`}
+                placeholder={placeholder}
+            />
+          )}
+      </div>
     </div>
+  );
+
+  const renderAspectRatioBtn = (ratio: AspectRatio, label: string, Icon: React.ElementType) => (
+      <button
+        onClick={() => updateFormData({ aspectRatio: ratio })}
+        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
+          formData.aspectRatio === ratio
+            ? 'border-misa-blue bg-blue-50 text-misa-blue font-bold shadow-md'
+            : 'border-gray-200 text-gray-500 hover:border-gray-300'
+        }`}
+      >
+        <Icon className="w-5 h-5 mb-1" />
+        <span className="text-xs">{label}</span>
+      </button>
+  );
+
+  const renderFormatOption = (format: EventFormat, label: string, Icon: React.ElementType) => (
+      <label className={`flex flex-col items-center justify-center p-3 border-2 rounded-xl cursor-pointer transition-all ${
+          formData.eventFormat === format 
+          ? 'border-misa-blue bg-blue-50 text-misa-blue shadow-md' 
+          : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+      }`}>
+          <input 
+              type="radio" 
+              name="eventFormat" 
+              value={format}
+              checked={formData.eventFormat === format}
+              onChange={() => updateFormData({ eventFormat: format })}
+              className="hidden"
+          />
+          <Icon className="w-6 h-6 mb-2" />
+          <span className="text-sm font-medium">{label}</span>
+      </label>
   );
 
   // Condition to show General Info and Contact Info
@@ -185,6 +240,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F0F2F5] font-sans pb-10">
       <Header />
+      <InstallPWA />
 
       <main className="max-w-[1920px] mx-auto p-4 sm:p-6 lg:p-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -209,7 +265,7 @@ const App: React.FC = () => {
                   mode === 'history' ? 'bg-misa-blue text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
                 }`}
               >
-                <History className="w-4 h-4" /> Lịch sử
+                <History className="w-4 h-4" /> Thư viện
               </button>
             </div>
 
@@ -224,41 +280,66 @@ const App: React.FC = () => {
                 </div>
             ) : mode === 'history' ? (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <History className="w-6 h-6 text-misa-blue" />
-                        Lịch sử thiết kế
-                    </h3>
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                            <ImageIcon className="w-6 h-6 text-misa-blue" />
+                            Thư viện thiết kế
+                        </h3>
+                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">{history.length} mục</span>
+                    </div>
+
                     {history.length === 0 ? (
-                         <div className="text-center py-12 text-gray-400">
-                             <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-50"/>
-                             <p>Chưa có hình ảnh nào được tạo</p>
+                         <div className="text-center py-16 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                             <div className="bg-white p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3 shadow-sm">
+                                <ImageIcon className="w-8 h-8 text-gray-300"/>
+                             </div>
+                             <p className="font-medium">Chưa có thiết kế nào</p>
+                             <p className="text-xs mt-1">Các ảnh bạn tạo sẽ xuất hiện ở đây</p>
                          </div>
                     ) : (
                         <div className="grid grid-cols-2 gap-4">
                             {history.map((item) => (
-                                <div key={item.id} className="group relative rounded-lg overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-all">
-                                    <img src={item.image} alt="History" className="w-full aspect-[2/3] object-cover" />
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                        <button 
-                                            onClick={() => openHistoryItem(item.image)}
-                                            className="p-2 bg-white rounded-full text-gray-800 hover:bg-blue-50"
-                                            title="Xem"
-                                        >
-                                            <ZoomIn className="w-4 h-4" />
-                                        </button>
-                                        <a 
-                                            href={item.image} 
-                                            download={`MISA-History-${item.createdAt}.png`}
-                                            className="p-2 bg-white rounded-full text-gray-800 hover:bg-green-50"
-                                            title="Tải về"
-                                        >
-                                            <Download className="w-4 h-4" />
-                                        </a>
+                                <div key={item.id} className="group relative bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300">
+                                    {/* Thumbnail Image */}
+                                    <div 
+                                        className="aspect-[2/3] w-full relative cursor-pointer overflow-hidden"
+                                        onClick={() => openHistoryItem(item.image)}
+                                    >
+                                        <img 
+                                            src={item.image} 
+                                            alt="Thumbnail" 
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                                        />
+                                        
+                                        {/* Hover Overlay Actions */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                                            <div className="flex gap-2 justify-center transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                                                <a 
+                                                    href={item.image} 
+                                                    download={`MISA-Design-${item.createdAt}.png`}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="p-2 bg-white/90 backdrop-blur-sm rounded-lg text-gray-800 hover:bg-white hover:text-green-600 shadow-lg transition-colors"
+                                                    title="Tải xuống"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                </a>
+                                                <button 
+                                                    onClick={(e) => deleteHistoryItem(item.id, e)}
+                                                    className="p-2 bg-white/90 backdrop-blur-sm rounded-lg text-gray-800 hover:bg-red-50 hover:text-red-600 shadow-lg transition-colors"
+                                                    title="Xóa"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1">
-                                        <p className="text-[10px] text-white text-center">
-                                            {new Date(item.createdAt).toLocaleString()}
-                                        </p>
+
+                                    {/* Info Footer */}
+                                    <div className="p-3 bg-white border-t border-gray-100">
+                                        <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-medium">
+                                            <Calendar className="w-3 h-3" />
+                                            {new Date(item.createdAt).toLocaleDateString('vi-VN')}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -319,69 +400,85 @@ const App: React.FC = () => {
                   <div className="animate-in fade-in slide-in-from-top-4">
                     {renderSectionHeader(<FileText className="w-5 h-5" />, "Thông tin chung")}
                     
-                    <div className="grid grid-cols-2 gap-4 mb-5">
-                      <button
-                        onClick={() => updateFormData({ aspectRatio: '16:9' })}
-                        className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
-                          formData.aspectRatio === '16:9'
-                            ? 'border-misa-blue bg-blue-50 text-misa-blue font-bold shadow-md'
-                            : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                        }`}
-                      >
-                        <Layout className="w-6 h-6 mb-2" />
-                        <span className="text-sm">Ngang (16:9)</span>
-                      </button>
-                      <button
-                        onClick={() => updateFormData({ aspectRatio: '3:4' })}
-                        className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
-                          formData.aspectRatio === '3:4'
-                            ? 'border-misa-blue bg-blue-50 text-misa-blue font-bold shadow-md'
-                            : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                        }`}
-                      >
-                        <Layout className="w-6 h-6 mb-2 rotate-90" />
-                        <span className="text-sm">Dọc (3:4)</span>
-                      </button>
+                    <div className="grid grid-cols-3 gap-3 mb-5">
+                      {renderAspectRatioBtn('16:9', 'Ngang (16:9)', Layout)}
+                      {renderAspectRatioBtn('4:3', 'Chuẩn (4:3)', RectangleHorizontal)}
+                      {renderAspectRatioBtn('3:4', 'Dọc (3:4)', RectangleVertical)}
                     </div>
 
                     {renderInputField("Loại sự kiện", formData.eventType, "eventType", "VD: Hội thảo, Hội nghị, Lớp tập huấn...")}
 
-                    {renderInputField("Tên sự kiện", formData.eventName, "eventName", "VD: Hội thảo Chuyển đổi số...", true)}
+                    {/* Event Name Input with Uppercase Toggle */}
+                    <div className="mb-5">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Tên sự kiện</label>
+                      <div className="relative">
+                          <textarea
+                              value={formData.eventName}
+                              onChange={(e) => updateFormData({ eventName: e.target.value })}
+                              className="w-full px-5 py-4 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-misa-blue/50 focus:border-misa-blue transition-all text-lg min-h-[100px] shadow-sm"
+                              placeholder="VD: Hội thảo Chuyển đổi số..."
+                          />
+                      </div>
+                      <label className="flex items-center gap-2 mt-2 cursor-pointer group">
+                        <div className="relative flex items-center">
+                            <input 
+                                type="checkbox" 
+                                checked={formData.isEventNameUppercase}
+                                onChange={(e) => updateFormData({ isEventNameUppercase: e.target.checked })}
+                                className="w-5 h-5 text-misa-blue rounded border-gray-300 focus:ring-misa-blue cursor-pointer"
+                            />
+                        </div>
+                        <span className="text-sm text-gray-600 font-medium group-hover:text-misa-blue transition-colors flex items-center gap-1">
+                            <Type className="w-4 h-4" /> Viết hoa tiêu đề (UPPERCASE)
+                        </span>
+                      </label>
+                    </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                         {renderInputField("Ngày", formData.date, "date", "DD/MM/YYYY")}
                         {renderInputField("Giờ", formData.time, "time", "14:00 - 16:30")}
                     </div>
 
-                    {renderInputField("Đối tượng tham gia", formData.targetAudience, "targetAudience", "VD: Giám đốc doanh nghiệp, Kế toán trưởng")}
+                    {renderInputField("Đối tượng tham gia", formData.targetAudience, "targetAudience", "VD: Giám đốc doanh nghiệp, Kế toán trưởng", false, <Users className="w-5 h-5" />)}
 
+                    {/* --- FORMAT SELECTION --- */}
                     <div className="mb-5">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Hình thức tổ chức</label>
-                        <div className="flex gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-lg bg-white w-full hover:bg-gray-50">
-                                <input 
-                                    type="radio" 
-                                    name="onlineType" 
-                                    checked={formData.isOnline} 
-                                    onChange={() => updateFormData({ isOnline: true, locationOrPlatform: 'Zoom Online' })}
-                                    className="text-misa-blue focus:ring-misa-blue"
-                                />
-                                <span className="text-base">Online (Zoom)</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-lg bg-white w-full hover:bg-gray-50">
-                                <input 
-                                    type="radio" 
-                                    name="onlineType" 
-                                    checked={!formData.isOnline} 
-                                    onChange={() => updateFormData({ isOnline: false, locationOrPlatform: '' })}
-                                    className="text-misa-blue focus:ring-misa-blue"
-                                />
-                                <span className="text-base">Offline</span>
-                            </label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">Hình thức tổ chức</label>
+                        <div className="grid grid-cols-3 gap-3 mb-4">
+                            {renderFormatOption('online', 'Online', Wifi)}
+                            {renderFormatOption('offline', 'Offline', Building)}
+                            {renderFormatOption('hybrid', 'Hybrid', Split)}
                         </div>
+
+                        {/* Online Platform Input */}
+                        {(formData.eventFormat === 'online' || formData.eventFormat === 'hybrid') && (
+                            <div className="animate-in fade-in slide-in-from-top-1">
+                                {renderInputField(
+                                    "Nền tảng Online", 
+                                    formData.onlinePlatform, 
+                                    "onlinePlatform", 
+                                    "VD: Zoom Meeting (Mặc định)", 
+                                    false, 
+                                    <Wifi className="w-5 h-5" />
+                                )}
+                            </div>
+                        )}
+
+                        {/* Offline Address Input */}
+                        {(formData.eventFormat === 'offline' || formData.eventFormat === 'hybrid') && (
+                             <div className="animate-in fade-in slide-in-from-top-1">
+                                {renderInputField(
+                                    "Địa điểm tổ chức", 
+                                    formData.offlineAddress, 
+                                    "offlineAddress", 
+                                    "VD: Tầng 3, Khách sạn Melia\n44 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội", 
+                                    true // Is Text Area
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    {!formData.isOnline && renderInputField("Địa điểm", formData.locationOrPlatform, "locationOrPlatform", "VD: Tầng 3, Khách sạn Melia Hà Nội")}
+                    {renderInputField("Trang phục (Dresscode)", formData.dressCode, "dressCode", "VD: Trang trọng (Vest, Áo dài), Smart Casual...", false, <Shirt className="w-5 h-5" />)}
                   </div>
                 )}
                 
@@ -511,9 +608,20 @@ const App: React.FC = () => {
                                   )}
                                   <input type="file" className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleQrUpload(e.target.files[0])} />
                               </label>
-                              <p className="text-xs text-gray-500 mt-2">
+                              <p className="text-xs text-gray-500 mt-2 mb-3">
                                   *Nếu không upload, hệ thống sẽ chèn 1 ô trắng để bạn tự dán QR sau.
                               </p>
+
+                              <div className="mt-3">
+                                <label className="block text-xs font-semibold text-gray-700 mb-1">Nội dung nút kêu gọi (CTA)</label>
+                                <input
+                                    type="text"
+                                    value={formData.qrCta}
+                                    onChange={(e) => updateFormData({ qrCta: e.target.value })}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-misa-blue/50 focus:border-misa-blue outline-none transition-all shadow-sm"
+                                    placeholder="Mặc định: Đăng ký ngay"
+                                />
+                              </div>
                           </div>
                       )}
                    </div>
@@ -587,6 +695,13 @@ const App: React.FC = () => {
                         </div>
                     )}
                 </div>
+
+                {errorMsg && (
+                    <div className="p-4 mx-4 mt-4 bg-red-50 text-red-600 rounded-xl border border-red-200 text-sm">
+                        <p className="font-bold mb-1">Đã xảy ra lỗi:</p>
+                        <p className="whitespace-pre-wrap">{errorMsg}</p>
+                    </div>
+                )}
                 
                 <div className="flex-1 bg-slate-100 p-8 flex items-center justify-center relative bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
                     {generatedImage ? (
@@ -633,13 +748,13 @@ const App: React.FC = () => {
             <img 
                 src={generatedImage} 
                 alt="Full Preview" 
-                className="max-h-[90vh] max-w-[95vw] object-contain shadow-2xl rounded"
+                className="max-h-[80vh] max-w-[95vw] object-contain shadow-2xl rounded"
             />
             <div className="mt-4 flex gap-4">
                 <a 
                     href={generatedImage} 
                     download="MISA-Event-Poster.png"
-                    className="flex items-center gap-2 bg-misa-blue text-white px-6 py-3 rounded-full font-bold hover:bg-misa-dark transition-colors shadow-lg shadow-blue-500/20"
+                    className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-full font-bold hover:bg-green-700 transition-colors shadow-lg shadow-green-500/20"
                 >
                     <Download className="w-5 h-5" /> Tải về máy
                 </a>

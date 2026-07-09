@@ -6,7 +6,7 @@ import { cleanBackground } from '../services/geminiService';
 interface Props {
   onSelectBackground: (image: string) => void;
   selectedBackground?: string;
-  aspectRatio: '16:9' | '3:4';
+  aspectRatio: '16:9' | '3:4' | '4:3';
 }
 
 const TemplateLibrary: React.FC<Props> = ({ onSelectBackground, selectedBackground, aspectRatio }) => {
@@ -139,10 +139,10 @@ const TemplateLibrary: React.FC<Props> = ({ onSelectBackground, selectedBackgrou
                 onClick={() => handleSelectTemplate(template.color)}
             >
                 <div 
-                    className={`w-full ${aspectRatio === '16:9' ? 'aspect-video' : 'aspect-[3/4]'}`}
-                    style={{ backgroundColor: template.color }}
+                    className="w-full relative"
+                    style={{ aspectRatio: aspectRatio.replace(':','/'), backgroundColor: template.color }}
                 >
-                    <div className="w-full h-full flex items-center justify-center opacity-30 font-black text-2xl text-black/10 select-none">
+                    <div className="absolute inset-0 flex items-center justify-center opacity-30 font-black text-2xl text-black/10 select-none">
                         SAMPLE
                     </div>
                 </div>
@@ -155,16 +155,15 @@ const TemplateLibrary: React.FC<Props> = ({ onSelectBackground, selectedBackgrou
       {previewImage && (
         <div 
             className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => setPreviewImage(null)}
         >
-            <div className="relative max-w-4xl w-full max-h-[90vh]">
+            <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
                 <button 
                     onClick={() => setPreviewImage(null)}
                     className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
                 >
                     <X className="w-8 h-8" />
                 </button>
-                <img src={previewImage} alt="Preview" className="w-full h-full object-contain rounded-lg shadow-2xl" />
+                <img src={previewImage} alt="Preview" className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl mb-4" />
             </div>
         </div>
       )}

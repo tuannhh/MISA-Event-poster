@@ -31,7 +31,8 @@ const LogoSection: React.FC<Props> = ({ formData, onChange }) => {
     label: string, 
     field: 'organizerLogo' | 'productLogo' | 'coOrganizerLogo', 
     preview: string | null,
-    icon: React.ReactNode
+    icon: React.ReactNode,
+    hint?: string
   ) => (
     <div className="flex flex-col gap-2">
       <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -61,6 +62,7 @@ const LogoSection: React.FC<Props> = ({ formData, onChange }) => {
           </label>
         )}
       </div>
+      {hint && <p className="text-[10px] text-gray-400 italic text-center">{hint}</p>}
     </div>
   );
 
@@ -86,7 +88,7 @@ const LogoSection: React.FC<Props> = ({ formData, onChange }) => {
       {/* Conditional Inputs */}
       {formData.useBrandLogo && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2">
-          {renderLogoInput("Đơn vị tổ chức", "organizerLogo", formData.organizerLogoPreview, <Shield className="w-4 h-4 text-misa-blue"/>)}
+          {renderLogoInput("Đơn vị tổ chức", "organizerLogo", formData.organizerLogoPreview, <Shield className="w-4 h-4 text-misa-blue"/>, "Mặc định là Logo MISA nếu để trống")}
           {renderLogoInput("Sản phẩm đồng hành", "productLogo", formData.productLogoPreview, <Package className="w-4 h-4 text-green-600"/>)}
           {renderLogoInput("Đơn vị phối hợp", "coOrganizerLogo", formData.coOrganizerLogoPreview, <Users className="w-4 h-4 text-purple-600"/>)}
         </div>
